@@ -1,0 +1,139 @@
+#tutorial for setting up a sqlite database
+
+#import the proper packages
+import sqlite3
+from sqlite3 import Error
+
+
+#replace this string here for the location and name of the database
+database_file = "I:\My Documents\Data Science\Laundering\Data Files\Laundering.db"
+
+#function for setting up a connection to a database
+def create_connection(db_file):
+    """ create a database connection to the SQLite database
+        specified by db_file
+    :param db_file: database file
+    :return: Connection object or None
+    """
+    try:
+        conn = sqlite3.connect(db_file)
+        return conn
+    except Error as e:
+        print(e)
+ 
+    return None
+
+
+#creates the connection to the database
+conn = create_connection(database_file)
+
+
+#function for creating a table within the database
+def create_table(conn, create_table_sql):
+    """ create a table from the create_table_sql statement
+    :param conn: Connection object
+    :param create_table_sql: a CREATE TABLE statement
+    :return:
+    """
+    try:
+        c = conn.cursor()
+        c.execute(create_table_sql)
+    except Error as e:
+        print(e)
+
+
+
+
+#SQL command for creating the table
+#modify as needed for additional columns
+sql_create_table = """ CREATE TABLE IF NOT EXISTS transactions (
+                                    id integer PRIMARY KEY,
+                                    TRANS text,
+                                    TIMESTAMP numeric,
+                                    AMOUNT numeric,
+                                    SENDER text,
+                                    RECEIVER text
+                                ); """
+
+
+#checks if there is a connection and then creates the table within the database
+if conn is not None:
+    # creates table
+    create_table(conn, sql_create_table)
+else:
+    print("Error! cannot create the database connection.")
+
+
+#function to insert a record into a given table
+def insert_record(conn, record_data, sql_insert_record):
+    """
+    Create a new project into the table
+    :param conn:
+    :param project:
+    :return: project id
+    """
+    
+    cur = conn.cursor()
+    cur.execute(sql_insert_record, record_data)
+    
+    #uncomment if ID needed for key purposes
+    #return cur.lastrowid
+
+
+#SQL line to insert a record MODIFY BASED ON TABLE NAME AND COLUMN NAMES and add ?'s for each column
+sql_insert_record = ''' INSERT INTO transactions(TRANS,TIMESTAMP,AMOUNT,SENDER,RECEIVER) VALUES(?,?,?,?,?) '''
+record_data = ('Cool App with SQLite & R', '2015-01-01', '2015-01-30', '4', '5')
+
+#with connection open, insert record
+with conn:
+        # create a new crecord
+        insert_record(conn, record_data, sql_insert_record)
+
+
+#creates the connection to the database
+conn = create_connection(database_file)
+
+#Section to perform any query
+with conn:
+    cur = conn.cursor()
+    cur.execute("SELECT TRANS, SENDER \
+                 FROM transactions \
+                 WHERE SENDER == 'ID00001693732070'")
+    
+    rows = cur.fetchall()
+
+#closes the connection to the database_file
+conn.close()
+
+#prints out results of query    
+for row in rows:
+    print(row)
+
+
+# at some point make the table name a variable and include that into the strings to make future modifications
+# much easier
+
+#section for importing as a .csv
+import os
+import pandas as pd
+
+#sets database file
+database = "I:\My Documents\Data Science\Laundering\Data Files\Laundering.db"
+
+# create a database connection
+conn = create_connection(database)
+
+#Sets directory to pull in all of data from
+directory = "I:\My Documents\Data Science\Laundering\Data Files"
+os.chdir(directory)
+
+# Pulls in all data for analysis as .csv
+transactions = pd.read_csv('transactions.csv', sep= '|')
+
+#needs to rename the columns since TRANSACTION didn't work
+#NOTE COLUMN NAMES MUST MATCH BETWEEN DB AND CSV FILE
+transactions = transactions.rename(columns={'TRANSACTION': 'TRANS'})
+
+#Imports the csv into the DB, replace transactions with the name of the table in the DB
+transactions.to_sql('transactions', conn, if_exists='append', index=False)
+
